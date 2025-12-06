@@ -28,14 +28,31 @@ async function fetchLatestRate(seriesId, signal) {
   }
 
   const data = await response.json();
-  const observation = data.observations?.find((entry) => entry.value && entry.value !== '.');
+
+  // Filter for valid observations
+  const observation = data.observations?.find((entry) => {
+    // Must have a value
+    if (!entry.value || entry.value === '.') return false;
+
+    // Value must parse to a valid finite number
+    const parsed = Number.parseFloat(entry.value);
+    return Number.isFinite(parsed);
+  });
 
   if (!observation) {
     throw new Error('Mortgage rate data is temporarily unavailable.');
   }
 
+  // At this point, we know the value is valid
+  const parsedRate = Number.parseFloat(observation.value);
+
+  // Extra safety check (belt and suspenders)
+  if (!Number.isFinite(parsedRate)) {
+    throw new Error('Invalid mortgage rate data received from API.');
+  }
+
   return {
-    rate: Number.parseFloat(observation.value),
+    rate: parsedRate,
     asOf: observation.date
   };
 }

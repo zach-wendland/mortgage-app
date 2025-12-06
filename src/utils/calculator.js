@@ -56,21 +56,36 @@ export function generateAmortizationSchedule(principal, annualRate, years, month
 
   for (let i = 1; i <= numberOfPayments; i++) {
     const interestPayment = remainingBalance * monthlyRate;
-    const principalPayment = monthlyPayment - interestPayment;
-    remainingBalance -= principalPayment;
+    let principalPayment;
+    let actualPayment;
 
-    // Handle final payment rounding
     if (i === numberOfPayments) {
+      // FINAL PAYMENT ADJUSTMENT
+      // Adjust to exactly zero out the balance regardless of accumulated rounding
+      principalPayment = remainingBalance;
+      actualPayment = principalPayment + interestPayment;
       remainingBalance = 0;
-    }
 
-    schedule.push({
-      paymentNumber: i,
-      paymentAmount: monthlyPayment,
-      principalPayment: principalPayment,
-      interestPayment: interestPayment,
-      remainingBalance: Math.max(0, remainingBalance)
-    });
+      schedule.push({
+        paymentNumber: i,
+        paymentAmount: actualPayment,        // May differ slightly from regular payment
+        principalPayment: principalPayment,  // Exact remaining balance
+        interestPayment: interestPayment,
+        remainingBalance: 0
+      });
+    } else {
+      // REGULAR PAYMENT
+      principalPayment = monthlyPayment - interestPayment;
+      remainingBalance -= principalPayment;
+
+      schedule.push({
+        paymentNumber: i,
+        paymentAmount: monthlyPayment,
+        principalPayment: principalPayment,
+        interestPayment: interestPayment,
+        remainingBalance: Math.max(0, remainingBalance)  // Prevent negative display
+      });
+    }
   }
 
   return schedule;
