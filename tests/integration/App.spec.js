@@ -21,6 +21,13 @@ describe('App integration', () => {
     if (!window.HTMLElement.prototype.scrollIntoView) {
       window.HTMLElement.prototype.scrollIntoView = vi.fn();
     }
+
+    // Mock IntersectionObserver for LoanSummary component
+    global.IntersectionObserver = class IntersectionObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
   });
 
   beforeEach(() => {
@@ -37,6 +44,9 @@ describe('App integration', () => {
     await wrapper.find('input[type="checkbox"]').setValue(true);
 
     await wrapper.find('form').trigger('submit.prevent');
+
+    // Wait for 800ms form submission delay + async tax lookup
+    await new Promise(resolve => setTimeout(resolve, 850));
     await flushPromises();
 
     expect(getStateSalesTaxMock).toHaveBeenCalledWith('WA');

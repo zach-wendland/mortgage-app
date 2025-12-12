@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import LoanSummary from '../../../src/components/LoanSummary.vue';
 
 const baseLoanInfo = {
@@ -20,6 +20,15 @@ const baseResults = {
 };
 
 describe('LoanSummary', () => {
+  beforeAll(() => {
+    // Mock IntersectionObserver for jsdom environment
+    global.IntersectionObserver = class IntersectionObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
   it('renders core loan metrics', () => {
     const wrapper = mount(LoanSummary, {
       props: {

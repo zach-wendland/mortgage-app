@@ -22,6 +22,9 @@ describe('LoanInputForm', () => {
 
     await wrapper.find('form').trigger('submit.prevent');
 
+    // Wait for the 800ms timeout before checking the emitted event
+    await new Promise(resolve => setTimeout(resolve, 850));
+
     const payload = wrapper.emitted('calculate')?.[0]?.[0];
     expect(payload).toMatchObject({
       principal: 200000,

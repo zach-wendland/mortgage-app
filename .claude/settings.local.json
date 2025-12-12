@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(wc:*)",
+      "WebSearch",
+      "WebFetch(domain:developers.taxjar.com)",
+      "WebFetch(domain:hughcalc.org)",
+      "WebFetch(domain:www.vertex42.com)",
+      "WebFetch(domain:fred.stlouisfed.org)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -97,7 +97,8 @@ export async function getStateSalesTax(stateCode) {
       });
       if (res.ok) {
         const data = await res.json();
-        // Shape will vary; map defensively to a base rate
+        // TaxJar returns rates in decimal format (0.065 for 6.5%)
+        // Specify format explicitly since we know TaxJar uses decimals
         const rate = Number(data?.rate?.state_rate ?? data?.rate?.combined_rate ?? 0);
         return { rate, source: 'taxjar', updatedAt: new Date().toISOString() };
       }
