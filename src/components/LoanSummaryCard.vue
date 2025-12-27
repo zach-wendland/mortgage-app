@@ -50,6 +50,8 @@
 </template>
 
 <script>
+import { h } from 'vue';
+
 export default {
   name: 'LoanSummaryCard',
   components: {
@@ -96,7 +98,9 @@ export default {
           this.animationFrameId = requestAnimationFrame(animate);
         }
       },
-      template: '<span>{{ formattedValue }}</span>'
+      render() {
+        return h('span', this.formattedValue);
+      }
     }
   },
   props: {
