@@ -38,8 +38,10 @@ describe('LoanSummary', () => {
       }
     });
 
+    // Wait for component to mount and animations to complete
     await nextTick();
     await wrapper.vm.$nextTick();
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     expect(wrapper.text()).toContain('Monthly Payment');
     expect(wrapper.text()).toContain('$1,073.64');
@@ -64,8 +66,10 @@ describe('LoanSummary', () => {
       }
     });
 
+    // Wait for component to mount and animations to complete
     await nextTick();
     await wrapper.vm.$nextTick();
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const text = wrapper.text();
     expect(text).toContain('Financed Amount (incl. Sales Tax)');

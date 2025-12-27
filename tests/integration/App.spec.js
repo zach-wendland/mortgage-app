@@ -45,9 +45,11 @@ describe('App integration', () => {
 
     await wrapper.find('form').trigger('submit.prevent');
 
-    // Wait for 800ms form submission delay + async tax lookup
+    // Wait for 800ms form submission delay + async tax lookup + animations
     await new Promise(resolve => setTimeout(resolve, 850));
     await flushPromises();
+    await wrapper.vm.$nextTick();
+    await new Promise(resolve => setTimeout(resolve, 150)); // Wait for animations to complete
 
     expect(getStateSalesTaxMock).toHaveBeenCalledWith('WA');
 
@@ -56,8 +58,10 @@ describe('App integration', () => {
     expect(summary.text()).toContain('$213,000.00'); // financed amount with 6.5% tax
     expect(summary.text()).toContain('$13,000.00'); // tax amount
 
-    const tableRows = wrapper.findAll('.amortization-table tbody tr');
-    expect(tableRows.length).toBe(360);
+    // AmortizationTable uses virtual scrolling, so check the component's schedule prop instead of DOM rows
+    const tableComponent = wrapper.findComponent({ name: 'AmortizationTable' });
+    expect(tableComponent.exists()).toBe(true);
+    expect(tableComponent.props('schedule').length).toBe(360); // 30 years * 12 months
 
     expect(wrapper.find('.results-section').exists()).toBe(true);
   });

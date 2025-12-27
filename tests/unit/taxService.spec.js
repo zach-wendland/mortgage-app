@@ -29,19 +29,26 @@ describe('taxService', () => {
     expect(result.rate).toBe(0);
   });
 
-  it('uses provider when configured', async () => {
-    vi.stubEnv('VITE_TAX_API_PROVIDER', 'taxjar');
-    vi.stubEnv('VITE_TAXJAR_API_KEY', 'token');
+  it('uses proxy when available', async () => {
+    // Mock the API proxy response (simulating what the backend returns)
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ rate: { state_rate: '0.07' } })
+      json: () => Promise.resolve({
+        rate: 0.07,
+        source: 'taxjar',
+        updatedAt: '2025-01-01T00:00:00Z'
+      })
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const { getStateSalesTax } = await loadService();
     const result = await getStateSalesTax('TX');
 
+    // Verify it called the proxy endpoint
     expect(fetchMock).toHaveBeenCalled();
+    const callUrl = fetchMock.mock.calls[0][0];
+    expect(callUrl).toContain('/api/tax-rate/TX');
+
     expect(result.rate).toBeCloseTo(0.07, 4);
     expect(result.source).toBe('taxjar');
   });

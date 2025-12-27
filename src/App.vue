@@ -1,5 +1,27 @@
 <template>
   <div id="app" :class="{ 'dark-theme': isDarkTheme }">
+    <!-- Error Boundary Banner -->
+    <div v-if="appError" class="error-boundary">
+      <div class="error-content">
+        <div class="error-header">
+          <span class="error-icon">⚠️</span>
+          <h3>Something went wrong</h3>
+          <button @click="dismissError" class="error-dismiss" aria-label="Dismiss error">×</button>
+        </div>
+        <p class="error-message">{{ appError.message }}</p>
+        <div class="error-actions">
+          <button @click="reloadPage" class="error-btn error-btn-primary">Reload Page</button>
+          <button @click="showErrorDetails = !showErrorDetails" class="error-btn">
+            {{ showErrorDetails ? 'Hide' : 'Show' }} Details
+          </button>
+          <button @click="copyErrorToClipboard" class="error-btn">Copy Error</button>
+        </div>
+        <div v-if="showErrorDetails" class="error-details">
+          <pre>{{ appError.stack }}</pre>
+        </div>
+      </div>
+    </div>
+
     <!-- Animated Background -->
     <div class="animated-background">
       <div class="gradient-orb orb-1"></div>
@@ -73,6 +95,7 @@ import MortgageRatesPanel from './components/MortgageRatesPanel.vue';
 import { computeLoanDetails } from './utils/loanProcessor.js';
 import { validateInputs } from './utils/calculator.js';
 import { getMortgageRates } from './services/mortgageRateService.js';
+import { getStoredErrors } from './utils/errorTracking.js';
 
 export default {
   name: 'App',
@@ -91,8 +114,21 @@ export default {
       mortgageRates: [],
       ratesLoading: false,
       ratesError: '',
-      isDarkTheme: false
+      isDarkTheme: false,
+      appError: null,
+      showErrorDetails: false
     };
+  },
+  errorCaptured(err, instance, info) {
+    // Catch errors from child components
+    this.appError = {
+      message: err.message || 'An unexpected error occurred',
+      stack: err.stack,
+      component: instance?.$options?.name,
+      info
+    };
+    // Return false to prevent error from propagating further
+    return false;
   },
   created() {
     this.loadMortgageRates();
@@ -159,6 +195,30 @@ export default {
       // Apply the selected rate to the form
       if (this.$refs.inputForm) {
         this.$refs.inputForm.applyRate(rateData.rate, years);
+      }
+    },
+    dismissError() {
+      this.appError = null;
+      this.showErrorDetails = false;
+    },
+    reloadPage() {
+      window.location.reload();
+    },
+    async copyErrorToClipboard() {
+      try {
+        const errorText = JSON.stringify(this.appError, null, 2);
+        await navigator.clipboard.writeText(errorText);
+        // Brief visual feedback - could be enhanced with a toast notification
+        const copyBtn = event?.target;
+        if (copyBtn) {
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+          }, 2000);
+        }
+      } catch (err) {
+        console.warn('Failed to copy error to clipboard:', err);
       }
     }
   }
@@ -667,5 +727,191 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(102, 126, 234, 0.4);
+}
+
+/* ===========================
+   ERROR BOUNDARY
+   =========================== */
+.error-boundary {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  background: rgba(220, 38, 38, 0.95);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border-bottom: 2px solid rgba(255, 68, 68, 0.5);
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+  animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.error-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px;
+  color: #fff;
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.error-header h3 {
+  flex: 1;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.error-dismiss {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.error-dismiss:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.error-message {
+  margin: 0 0 16px 0;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.error-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.error-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.error-btn:active {
+  transform: translateY(0);
+}
+
+.error-btn-primary {
+  background: rgba(255, 255, 255, 0.95);
+  color: #dc2626;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.error-btn-primary:hover {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.error-details {
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.error-details pre {
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #fca5a5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Mobile responsive error boundary */
+@media (max-width: 768px) {
+  .error-content {
+    padding: 16px;
+  }
+
+  .error-header h3 {
+    font-size: 1rem;
+  }
+
+  .error-icon {
+    font-size: 1.25rem;
+  }
+
+  .error-btn {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+
+  .error-details {
+    max-height: 150px;
+  }
 }
 </style>
