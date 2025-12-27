@@ -7,6 +7,14 @@ export default defineConfig({
     port: 3000
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    },
+    testTimeout: 10000,
+    setupFiles: ['./tests/setup.js']
   }
 })

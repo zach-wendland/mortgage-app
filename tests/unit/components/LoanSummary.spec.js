@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { nextTick } from 'vue';
 import LoanSummary from '../../../src/components/LoanSummary.vue';
 
 const baseLoanInfo = {
@@ -29,13 +30,16 @@ describe('LoanSummary', () => {
     };
   });
 
-  it('renders core loan metrics', () => {
+  it('renders core loan metrics', async () => {
     const wrapper = mount(LoanSummary, {
       props: {
         loanInfo: baseLoanInfo,
         results: baseResults
       }
     });
+
+    await nextTick();
+    await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain('Monthly Payment');
     expect(wrapper.text()).toContain('$1,073.64');
@@ -45,7 +49,7 @@ describe('LoanSummary', () => {
     expect(wrapper.text()).not.toContain('Sales Tax Amount');
   });
 
-  it('displays sales tax details when enabled', () => {
+  it('displays sales tax details when enabled', async () => {
     const wrapper = mount(LoanSummary, {
       props: {
         loanInfo: {
@@ -59,6 +63,9 @@ describe('LoanSummary', () => {
         results: baseResults
       }
     });
+
+    await nextTick();
+    await wrapper.vm.$nextTick();
 
     const text = wrapper.text();
     expect(text).toContain('Financed Amount (incl. Sales Tax)');

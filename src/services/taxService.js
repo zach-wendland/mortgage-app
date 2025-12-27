@@ -2,8 +2,8 @@
 // Usage: import { getStateSalesTax } from './services/taxService'
 // Returns rate as a decimal (e.g., 0.065 for 6.5%)
 
-const PROVIDER = import.meta.env.VITE_TAX_API_PROVIDER || 'static';
-const TAXJAR_API_KEY = import.meta.env.VITE_TAXJAR_API_KEY;
+// API Proxy URL - calls backend proxy instead of exposing API keys client-side
+const API_PROXY_URL = import.meta.env.VITE_API_PROXY_URL || 'http://localhost:3001';
 
 // Basic base state sales tax rates (approximate; local taxes not included)
 // Source note: For production use, replace with a provider like TaxJar or Avalara.
@@ -85,29 +85,29 @@ export async function getStateSalesTax(stateCode) {
     return { rate: 0, source: 'none', updatedAt: new Date().toISOString() };
   }
 
-  // Provider hook (not executed without proper env/config)
-  if (PROVIDER === 'taxjar' && TAXJAR_API_KEY) {
-    // Example TaxJar-like flow (placeholder; adjust per provider docs):
-    // Note: State-level base rates are typically static; city/county rates vary by ZIP.
-    try {
-      const res = await fetch(`https://api.taxjar.com/v2/rates/00000?country=US&state=${code}`, {
-        headers: {
-          Authorization: `Bearer ${TAXJAR_API_KEY}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // TaxJar returns rates in decimal format (0.065 for 6.5%)
-        // Specify format explicitly since we know TaxJar uses decimals
-        const rate = Number(data?.rate?.state_rate ?? data?.rate?.combined_rate ?? 0);
-        return { rate, source: 'taxjar', updatedAt: new Date().toISOString() };
-      }
-    } catch (_) {
-      // fall through to static
+  // Call API proxy instead of directly calling external APIs
+  // The proxy securely handles API keys server-side
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    const res = await fetch(`${API_PROXY_URL}/api/tax-rate/${code}`, {
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      // Proxy returns { rate, source, updatedAt }
+      return data;
     }
+  } catch (error) {
+    console.warn('[taxService] Proxy unavailable, using static fallback:', error.message);
+    // Fall through to static fallback
   }
 
-  // Static fallback
+  // Static fallback (used when proxy is down or returns error)
   const rate = STATE_BASE_SALES_TAX[code] ?? 0;
   return { rate, source: 'static', updatedAt: new Date().toISOString() };
 }
