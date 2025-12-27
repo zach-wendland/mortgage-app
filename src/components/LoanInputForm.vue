@@ -188,6 +188,8 @@
 
 <script>
 import { listStates } from '../services/taxService';
+import { sanitizeLoanForm } from '../utils/sanitize';
+
 export default {
   name: 'LoanInputForm',
   props: {
@@ -299,14 +301,41 @@ export default {
       this.isCalculating = true;
       this.showKeyboardHint = false;
 
-      // Capture snapshot of loan data at submit time
-      // This creates a new object with the current values
-      const loanDataSnapshot = {
+      // Sanitize all input fields before emitting
+      const sanitizedData = sanitizeLoanForm({
         principal: this.loanData.principal,
         annualRate: this.loanData.annualRate,
         years: this.loanData.years,
-        stateCode: this.loanData.stateCode,
+        state: this.loanData.stateCode,
         includeSalesTax: this.loanData.includeSalesTax
+      });
+
+      // Validate sanitized data
+      if (sanitizedData.principal === null || sanitizedData.principal <= 0) {
+        this.isCalculating = false;
+        this.setError('Please enter a valid loan amount');
+        return;
+      }
+
+      if (sanitizedData.annualRate === null || sanitizedData.annualRate < 0 || sanitizedData.annualRate > 100) {
+        this.isCalculating = false;
+        this.setError('Please enter a valid interest rate (0-100%)');
+        return;
+      }
+
+      if (sanitizedData.years === null || sanitizedData.years < 1 || sanitizedData.years > 50) {
+        this.isCalculating = false;
+        this.setError('Please enter a valid loan term (1-50 years)');
+        return;
+      }
+
+      // Create snapshot with sanitized data
+      const loanDataSnapshot = {
+        principal: sanitizedData.principal,
+        annualRate: sanitizedData.annualRate,
+        years: sanitizedData.years,
+        stateCode: sanitizedData.state,
+        includeSalesTax: sanitizedData.includeSalesTax
       };
 
       this.calculateTimeout = setTimeout(() => {

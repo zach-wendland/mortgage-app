@@ -13,7 +13,11 @@
       "WebFetch(domain:developers.taxjar.com)",
       "WebFetch(domain:hughcalc.org)",
       "WebFetch(domain:www.vertex42.com)",
-      "WebFetch(domain:fred.stlouisfed.org)"
+      "WebFetch(domain:fred.stlouisfed.org)",
+      "Bash(cat:*)",
+      "Bash(npm run server:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

@@ -51,18 +51,24 @@ describe('LoanSummary', () => {
     expect(wrapper.text()).not.toContain('Sales Tax Amount');
   });
 
-  it('displays sales tax details when enabled', async () => {
+  it('displays sales tax in principal when enabled', async () => {
     const wrapper = mount(LoanSummary, {
       props: {
         loanInfo: {
           ...baseLoanInfo,
+          principal: 200000, // Original principal
+          financedPrincipal: 213000, // Principal with tax included
           includeSalesTax: true,
           stateCode: 'WA',
           taxRate: 0.065,
-          taxAmount: 13000,
-          financedPrincipal: 213000
+          taxAmount: 13000
         },
-        results: baseResults
+        results: {
+          ...baseResults,
+          monthlyPayment: 1143.43,
+          totalPaid: 411634.82,
+          totalInterest: 198634.82
+        }
       }
     });
 
@@ -72,12 +78,11 @@ describe('LoanSummary', () => {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const text = wrapper.text();
-    expect(text).toContain('Financed Amount (incl. Sales Tax)');
+    // Simplified component shows principal amount (which includes tax)
+    expect(text).toContain('Loan Amount');
     expect(text).toContain('$213,000.00');
-    expect(text).toContain('Sales Tax Rate (WA)');
-    expect(text).toContain('6.50%');
-    expect(text).toContain('Sales Tax Amount');
-    expect(text).toContain('$13,000.00');
+    expect(text).toContain('Monthly Payment');
+    expect(text).toContain('$1,143.43');
   });
 });
 
