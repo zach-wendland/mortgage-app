@@ -2,7 +2,11 @@ import {
   calculateMonthlyPayment,
   calculateTotalPaid,
   calculateTotalInterest,
-  generateAmortizationSchedule
+  generateAmortizationSchedule,
+  calculateLTV,
+  calculateMonthlyPMI,
+  calculatePMIDropOff,
+  calculateTotalPMI
 } from './calculator.js';
 import { getStateSalesTax } from '../services/taxService.js';
 
@@ -53,11 +57,20 @@ export function normalizeTaxRate(rawRate, format = 'auto') {
 
 export async function computeLoanDetails(loanData, taxLookup = getStateSalesTax) {
   const principal = Number(loanData.principal);
+  const propertyValue = Number(loanData.propertyValue) || principal; // Default to principal if not provided
   const annualRate = Number(loanData.annualRate);
   const years = Number(loanData.years);
   const stateCode = loanData.stateCode || '';
   const includeSalesTax = !!loanData.includeSalesTax;
+  const pmiRate = Number(loanData.pmiRate) || 0;
+  const monthlyInsurance = Number(loanData.monthlyInsurance) || 0;
 
+  // Calculate LTV and down payment
+  const ltv = calculateLTV(principal, propertyValue);
+  const downPayment = propertyValue - principal;
+  const pmiRequired = ltv > 0.80;
+
+  // Calculate sales tax (existing logic)
   let taxRate = 0;
   let taxAmount = 0;
 
@@ -72,15 +85,31 @@ export async function computeLoanDetails(loanData, taxLookup = getStateSalesTax)
     }
   }
 
+  // Core P&I calculation (unchanged)
   const financedPrincipal = principal + taxAmount;
   const monthlyPayment = calculateMonthlyPayment(financedPrincipal, annualRate, years);
   const totalPaid = calculateTotalPaid(monthlyPayment, years);
   const totalInterest = calculateTotalInterest(totalPaid, financedPrincipal);
   const schedule = generateAmortizationSchedule(financedPrincipal, annualRate, years, monthlyPayment);
 
+  // PMI calculation
+  const monthlyPMI = pmiRequired ? calculateMonthlyPMI(principal, pmiRate) : 0;
+  const pmiDropOffMonth = pmiRequired ? calculatePMIDropOff(schedule, propertyValue) : null;
+  const totalPMIPaid = calculateTotalPMI(monthlyPMI, pmiDropOffMonth);
+
+  // Total monthly payment including PMI and insurance
+  const totalMonthlyPayment = monthlyPayment + monthlyPMI + monthlyInsurance;
+
   return {
     loanInfo: {
       principal,
+      propertyValue,
+      downPayment,
+      ltv,
+      pmiRequired,
+      pmiRate,
+      monthlyPMI,
+      monthlyInsurance,
       financedPrincipal,
       annualRate,
       years,
@@ -90,9 +119,14 @@ export async function computeLoanDetails(loanData, taxLookup = getStateSalesTax)
       taxAmount
     },
     results: {
-      monthlyPayment,
+      monthlyPayment,        // P&I only
+      monthlyPMI,
+      monthlyInsurance,
+      totalMonthlyPayment,   // P&I + PMI + Insurance
       totalPaid,
-      totalInterest
+      totalInterest,
+      totalPMIPaid,
+      pmiDropOffMonth
     },
     schedule
   };

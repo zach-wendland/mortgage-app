@@ -125,3 +125,54 @@ export function validateInputs(principal, annualRate, years) {
 
   return { isValid: true, error: null };
 }
+
+/**
+ * Calculate Loan-to-Value ratio
+ * @param {number} loanAmount - Loan amount
+ * @param {number} propertyValue - Property value
+ * @returns {number} LTV as decimal (e.g., 0.85 for 85%)
+ */
+export function calculateLTV(loanAmount, propertyValue) {
+  if (!propertyValue || propertyValue <= 0) return 0;
+  return loanAmount / propertyValue;
+}
+
+/**
+ * Calculate monthly PMI payment
+ * @param {number} loanAmount - Original loan amount
+ * @param {number} annualPMIRate - Annual PMI rate as decimal (e.g., 0.008 for 0.8%)
+ * @returns {number} Monthly PMI payment
+ */
+export function calculateMonthlyPMI(loanAmount, annualPMIRate) {
+  if (!annualPMIRate || annualPMIRate <= 0) return 0;
+  return (loanAmount * annualPMIRate) / 12;
+}
+
+/**
+ * Find payment number where PMI drops off (LTV <= 78%)
+ * @param {Array} schedule - Amortization schedule
+ * @param {number} propertyValue - Property value
+ * @returns {number|null} Payment number when PMI ends, or null if never
+ */
+export function calculatePMIDropOff(schedule, propertyValue) {
+  if (!propertyValue || propertyValue <= 0) return null;
+
+  const targetBalance = propertyValue * 0.78; // 78% LTV threshold
+
+  const dropOffPayment = schedule.find(payment =>
+    payment.remainingBalance <= targetBalance
+  );
+
+  return dropOffPayment ? dropOffPayment.paymentNumber : null;
+}
+
+/**
+ * Calculate total PMI paid until drop-off
+ * @param {number} monthlyPMI - Monthly PMI amount
+ * @param {number} dropOffMonth - Payment number when PMI ends
+ * @returns {number} Total PMI paid
+ */
+export function calculateTotalPMI(monthlyPMI, dropOffMonth) {
+  if (!dropOffMonth || monthlyPMI <= 0) return 0;
+  return monthlyPMI * dropOffMonth;
+}

@@ -143,9 +143,12 @@
       <!-- Sticky Header -->
       <div class="sticky-header" :class="{ visible: isHeaderSticky }">
         <div class="header-cell">#</div>
-        <div class="header-cell">Payment</div>
+        <div class="header-cell">P&I</div>
         <div class="header-cell">Principal</div>
         <div class="header-cell">Interest</div>
+        <div class="header-cell">PMI</div>
+        <div class="header-cell">Insurance</div>
+        <div class="header-cell">Total</div>
         <div class="header-cell">Balance</div>
       </div>
 
@@ -154,9 +157,12 @@
           <thead>
             <tr class="glow-header">
               <th scope="col">#</th>
-              <th scope="col">Payment</th>
+              <th scope="col">P&I</th>
               <th scope="col">Principal</th>
               <th scope="col">Interest</th>
+              <th scope="col">PMI</th>
+              <th scope="col">Insurance</th>
+              <th scope="col">Total</th>
               <th scope="col">Balance</th>
             </tr>
           </thead>
@@ -175,7 +181,7 @@
                   tabindex="0"
                   :aria-expanded="expandedYears.includes(group.year)"
                 >
-                  <td colspan="5" class="year-header">
+                  <td colspan="8" class="year-header">
                     <div class="year-header-content">
                       <svg
                         class="expand-icon"
@@ -213,6 +219,9 @@
                     <td>${{ formatCurrency(payment.paymentAmount) }}</td>
                     <td class="principal-cell">${{ formatCurrency(payment.principalPayment) }}</td>
                     <td class="interest-cell">${{ formatCurrency(payment.interestPayment) }}</td>
+                    <td class="pmi-cell">${{ formatCurrency(pmiByPayment(payment.paymentNumber)) }}</td>
+                    <td class="insurance-cell">${{ formatCurrency(monthlyInsurance) }}</td>
+                    <td class="total-cell"><strong>${{ formatCurrency(payment.paymentAmount + pmiByPayment(payment.paymentNumber) + monthlyInsurance) }}</strong></td>
                     <td>${{ formatCurrency(payment.remainingBalance) }}</td>
                   </tr>
 
@@ -221,7 +230,7 @@
                     v-if="expandedPayment === payment.paymentNumber"
                     class="detail-row"
                   >
-                    <td colspan="5">
+                    <td colspan="8">
                       <div class="payment-details">
                         <div class="detail-grid">
                           <div class="detail-item">
@@ -252,7 +261,7 @@
             <template v-else>
               <!-- Spacer for virtual scroll offset -->
               <tr v-if="virtualScrollOffset > 0" class="virtual-spacer">
-                <td colspan="5" :style="{ height: virtualScrollOffset + 'px' }"></td>
+                <td colspan="8" :style="{ height: virtualScrollOffset + 'px' }"></td>
               </tr>
 
               <!-- Visible Rows -->
@@ -270,6 +279,9 @@
                 <td>${{ formatCurrency(payment.paymentAmount) }}</td>
                 <td class="principal-cell">${{ formatCurrency(payment.principalPayment) }}</td>
                 <td class="interest-cell">${{ formatCurrency(payment.interestPayment) }}</td>
+                <td class="pmi-cell">${{ formatCurrency(pmiByPayment(payment.paymentNumber)) }}</td>
+                <td class="insurance-cell">${{ formatCurrency(monthlyInsurance) }}</td>
+                <td class="total-cell"><strong>${{ formatCurrency(payment.paymentAmount + pmiByPayment(payment.paymentNumber) + monthlyInsurance) }}</strong></td>
                 <td>${{ formatCurrency(payment.remainingBalance) }}</td>
               </tr>
 
@@ -279,7 +291,7 @@
                   v-if="expandedPayment === payment.paymentNumber"
                   class="detail-row"
                 >
-                  <td colspan="5">
+                  <td colspan="8">
                     <div class="payment-details">
                       <div class="detail-grid">
                         <div class="detail-item">
@@ -306,7 +318,7 @@
 
               <!-- Bottom spacer for virtual scroll -->
               <tr v-if="virtualScrollBottomSpacer > 0" class="virtual-spacer">
-                <td colspan="5" :style="{ height: virtualScrollBottomSpacer + 'px' }"></td>
+                <td colspan="8" :style="{ height: virtualScrollBottomSpacer + 'px' }"></td>
               </tr>
             </template>
           </tbody>
@@ -351,6 +363,14 @@ export default {
   props: {
     schedule: {
       type: Array,
+      required: true
+    },
+    loanInfo: {
+      type: Object,
+      required: true
+    },
+    results: {
+      type: Object,
       required: true
     }
   },
@@ -529,6 +549,22 @@ export default {
         const paymentNum = Math.floor((i / divisor) * (totalPayments - 1)) + 1;
         return `#${paymentNum}`;
       });
+    },
+
+    // PMI amount for a given payment number
+    pmiByPayment() {
+      const monthlyPMI = this.results?.monthlyPMI ?? 0;
+      const dropOffMonth = this.results?.pmiDropOffMonth;
+
+      return (paymentNumber) => {
+        if (!dropOffMonth || paymentNumber > dropOffMonth) return 0;
+        return monthlyPMI;
+      };
+    },
+
+    // Monthly insurance amount
+    monthlyInsurance() {
+      return this.results?.monthlyInsurance ?? 0;
     }
   },
   watch: {
@@ -676,14 +712,22 @@ export default {
     },
 
     exportToCSV() {
-      const headers = ['Payment #', 'Payment Amount', 'Principal', 'Interest', 'Balance'];
-      const rows = this.filteredSchedule.map(p => [
-        p.paymentNumber,
-        p.paymentAmount.toFixed(2),
-        p.principalPayment.toFixed(2),
-        p.interestPayment.toFixed(2),
-        p.remainingBalance.toFixed(2)
-      ]);
+      const headers = ['Payment #', 'P&I', 'Principal', 'Interest', 'PMI', 'Insurance', 'Total', 'Balance'];
+      const rows = this.filteredSchedule.map(p => {
+        const pmi = this.pmiByPayment(p.paymentNumber);
+        const insurance = this.monthlyInsurance;
+        const total = p.paymentAmount + pmi + insurance;
+        return [
+          p.paymentNumber,
+          p.paymentAmount.toFixed(2),
+          p.principalPayment.toFixed(2),
+          p.interestPayment.toFixed(2),
+          pmi.toFixed(2),
+          insurance.toFixed(2),
+          total.toFixed(2),
+          p.remainingBalance.toFixed(2)
+        ];
+      });
 
       const csv = [
         headers.join(','),
@@ -704,14 +748,22 @@ export default {
     },
 
     async copyToClipboard() {
-      const headers = ['Payment #', 'Payment Amount', 'Principal', 'Interest', 'Balance'];
-      const rows = this.filteredSchedule.map(p => [
-        p.paymentNumber,
-        '$' + this.formatCurrency(p.paymentAmount),
-        '$' + this.formatCurrency(p.principalPayment),
-        '$' + this.formatCurrency(p.interestPayment),
-        '$' + this.formatCurrency(p.remainingBalance)
-      ]);
+      const headers = ['Payment #', 'P&I', 'Principal', 'Interest', 'PMI', 'Insurance', 'Total', 'Balance'];
+      const rows = this.filteredSchedule.map(p => {
+        const pmi = this.pmiByPayment(p.paymentNumber);
+        const insurance = this.monthlyInsurance;
+        const total = p.paymentAmount + pmi + insurance;
+        return [
+          p.paymentNumber,
+          '$' + this.formatCurrency(p.paymentAmount),
+          '$' + this.formatCurrency(p.principalPayment),
+          '$' + this.formatCurrency(p.interestPayment),
+          '$' + this.formatCurrency(pmi),
+          '$' + this.formatCurrency(insurance),
+          '$' + this.formatCurrency(total),
+          '$' + this.formatCurrency(p.remainingBalance)
+        ];
+      });
 
       const text = [
         headers.join('\t'),
@@ -1095,7 +1147,7 @@ h2 {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr 1.5fr;
+  grid-template-columns: 0.8fr 1fr 1fr 1fr 0.8fr 1fr 1fr 1fr;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
   backdrop-filter: blur(20px);
   padding: 14px 20px;
@@ -1267,6 +1319,22 @@ h2 {
 .interest-cell {
   color: #dc2626;
   font-weight: 500;
+}
+
+.pmi-cell {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.insurance-cell {
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+.total-cell {
+  color: #0f172a;
+  font-weight: 600;
+  background: rgba(102, 126, 234, 0.05);
 }
 
 /* Detail Row */
@@ -1464,8 +1532,8 @@ h2 {
   }
 
   .sticky-header {
-    grid-template-columns: 0.8fr 1.2fr 1.2fr 1.2fr 1.2fr;
-    font-size: 0.75rem;
+    grid-template-columns: 0.6fr 0.9fr 0.9fr 0.9fr 0.7fr 0.9fr 0.9fr 0.9fr;
+    font-size: 0.7rem;
     padding: 10px;
   }
 

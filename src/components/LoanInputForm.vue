@@ -33,6 +33,34 @@
           </div>
         </div>
 
+        <!-- Property Value -->
+        <div class="form-group glassmorphic-input" :class="{ 'input-focused': focusedField === 'propertyValue', 'has-value': loanData.propertyValue, 'slide-in': true }" style="animation-delay: 0.05s">
+          <label for="propertyValue" :class="{ 'label-float': focusedField === 'propertyValue' || loanData.propertyValue }">
+            Property Value
+          </label>
+          <div class="input-wrapper">
+            <span class="currency-symbol" :class="{ 'symbol-active': focusedField === 'propertyValue' || loanData.propertyValue }">$</span>
+            <input
+              id="propertyValue"
+              v-model="formattedPropertyValue"
+              type="text"
+              placeholder="500,000"
+              required
+              @focus="handleFocus('propertyValue')"
+              @blur="handleBlur('propertyValue')"
+              @input="handlePropertyValueInput"
+            />
+            <transition name="checkmark">
+              <svg v-if="loanData.propertyValue && loanData.propertyValue > 0" class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </transition>
+          </div>
+          <small v-if="loanData.propertyValue && loanData.principal" class="help-text info-text">
+            Down Payment: ${{ formatCurrency(loanData.propertyValue - loanData.principal) }} ({{ calculateDownPaymentPercent() }}%)
+          </small>
+        </div>
+
         <!-- Interest Rate -->
         <div class="form-group glassmorphic-input" :class="{ 'input-focused': focusedField === 'rate', 'has-value': loanData.annualRate, 'slide-in': true }" style="animation-delay: 0.1s">
           <label for="rate" :class="{ 'label-float': focusedField === 'rate' || loanData.annualRate }">
@@ -58,35 +86,87 @@
           </div>
         </div>
 
-        <!-- Loan Term with Range Slider -->
-        <div class="form-group glassmorphic-input slider-group" :class="{ 'input-focused': focusedField === 'years', 'has-value': loanData.years, 'slide-in': true }" style="animation-delay: 0.2s">
-          <label for="years" :class="{ 'label-float': true }">
-            Loan Term (Years)
+        <!-- Loan Term -->
+        <div class="form-group glassmorphic-input" :class="{ 'input-focused': focusedField === 'years', 'has-value': loanData.years, 'slide-in': true }" style="animation-delay: 0.2s">
+          <label for="years" :class="{ 'label-float': focusedField === 'years' || loanData.years }">
+            Loan Term
           </label>
-          <div class="slider-wrapper">
+          <div class="input-wrapper">
             <input
               id="years"
               v-model.number="loanData.years"
-              type="range"
+              type="number"
               min="1"
               max="40"
               step="1"
-              class="range-slider"
+              placeholder="30"
+              required
               @focus="handleFocus('years')"
               @blur="handleBlur('years')"
-              @input="handleSliderInput"
             />
-            <div class="slider-track-fill" :style="{ width: sliderFillWidth }"></div>
-            <transition name="tooltip">
-              <div v-if="loanData.years" class="slider-tooltip" :style="{ left: sliderTooltipPosition }">
-                {{ loanData.years }} years
-              </div>
+            <span class="unit-symbol" :class="{ 'symbol-active': focusedField === 'years' || loanData.years }">years</span>
+            <transition name="checkmark">
+              <svg v-if="loanData.years && loanData.years > 0" class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
             </transition>
           </div>
-          <div class="slider-labels">
-            <span>1</span>
-            <span>40</span>
+        </div>
+
+        <!-- PMI Rate (conditional - only shows when LTV > 80%) -->
+        <div v-if="showPMIField" class="form-group glassmorphic-input pmi-field" :class="{ 'input-focused': focusedField === 'pmiRate', 'has-value': loanData.pmiRate, 'slide-in': true }">
+          <label for="pmiRate" :class="{ 'label-float': focusedField === 'pmiRate' || loanData.pmiRate }">
+            PMI Rate (Annual)
+          </label>
+          <div class="input-wrapper">
+            <input
+              id="pmiRate"
+              v-model.number="loanData.pmiRate"
+              type="number"
+              step="0.01"
+              min="0"
+              max="5"
+              placeholder="0.8"
+              @focus="handleFocus('pmiRate')"
+              @blur="handleBlur('pmiRate')"
+            />
+            <span class="percent-symbol" :class="{ 'symbol-active': focusedField === 'pmiRate' || loanData.pmiRate }">%</span>
+            <transition name="checkmark">
+              <svg v-if="loanData.pmiRate && loanData.pmiRate > 0" class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </transition>
           </div>
+          <small class="help-text warning-text">
+            ⚠️ PMI required (LTV > 80%). Typical range: 0.5% - 1.5%
+          </small>
+        </div>
+
+        <!-- Monthly Insurance (optional) -->
+        <div class="form-group glassmorphic-input" :class="{ 'input-focused': focusedField === 'monthlyInsurance', 'has-value': loanData.monthlyInsurance, 'slide-in': true }" style="animation-delay: 0.35s">
+          <label for="monthlyInsurance" :class="{ 'label-float': focusedField === 'monthlyInsurance' || loanData.monthlyInsurance }">
+            Homeowner's Insurance (Optional)
+          </label>
+          <div class="input-wrapper">
+            <span class="currency-symbol" :class="{ 'symbol-active': focusedField === 'monthlyInsurance' || loanData.monthlyInsurance }">$</span>
+            <input
+              id="monthlyInsurance"
+              v-model.number="loanData.monthlyInsurance"
+              type="number"
+              step="1"
+              min="0"
+              placeholder="0"
+              @focus="handleFocus('monthlyInsurance')"
+              @blur="handleBlur('monthlyInsurance')"
+            />
+            <span class="unit-symbol" :class="{ 'symbol-active': focusedField === 'monthlyInsurance' || loanData.monthlyInsurance }">/mo</span>
+            <transition name="checkmark">
+              <svg v-if="loanData.monthlyInsurance && loanData.monthlyInsurance > 0" class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </transition>
+          </div>
+          <small class="help-text">Typical: $100-$300/month depending on location and coverage</small>
         </div>
 
         <!-- State Selector -->
@@ -202,14 +282,18 @@ export default {
     return {
       loanData: {
         principal: null,
+        propertyValue: null,
         annualRate: null,
         years: 30,
         stateCode: '',
-        includeSalesTax: false
+        includeSalesTax: false,
+        pmiRate: 0.8,
+        monthlyInsurance: 0
       },
       errorMessage: '',
       focusedField: null,
       formattedPrincipal: '',
+      formattedPropertyValue: '',
       isCalculating: false,
       showKeyboardHint: true,
       // Timeout IDs for cleanup
@@ -221,15 +305,10 @@ export default {
     states() {
       return listStates();
     },
-    sliderFillWidth() {
-      if (!this.loanData.years) return '0%';
-      const percentage = ((this.loanData.years - 1) / (40 - 1)) * 100;
-      return `${percentage}%`;
-    },
-    sliderTooltipPosition() {
-      if (!this.loanData.years) return '0%';
-      const percentage = ((this.loanData.years - 1) / (40 - 1)) * 100;
-      return `${percentage}%`;
+    showPMIField() {
+      if (!this.loanData.principal || !this.loanData.propertyValue) return false;
+      const ltv = this.loanData.principal / this.loanData.propertyValue;
+      return ltv > 0.80;
     }
   },
   mounted() {
@@ -267,12 +346,27 @@ export default {
         this.formattedPrincipal = '';
       }
     },
+    handlePropertyValueInput(event) {
+      const value = event.target.value.replace(/,/g, '');
+      const numValue = parseFloat(value);
+
+      if (!isNaN(numValue)) {
+        this.loanData.propertyValue = numValue;
+        this.formattedPropertyValue = this.formatCurrency(numValue);
+      } else if (value === '') {
+        this.loanData.propertyValue = null;
+        this.formattedPropertyValue = '';
+      }
+    },
     formatCurrency(value) {
       if (!value && value !== 0) return '';
       return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     },
-    handleSliderInput() {
-      this.showKeyboardHint = false;
+    calculateDownPaymentPercent() {
+      if (!this.loanData.propertyValue || this.loanData.propertyValue <= 0) return '0.0';
+      const downPayment = this.loanData.propertyValue - this.loanData.principal;
+      const percent = (downPayment / this.loanData.propertyValue) * 100;
+      return percent.toFixed(1);
     },
     toggleCheckbox() {
       this.loanData.includeSalesTax = !this.loanData.includeSalesTax;
@@ -304,16 +398,31 @@ export default {
       // Sanitize all input fields before emitting
       const sanitizedData = sanitizeLoanForm({
         principal: this.loanData.principal,
+        propertyValue: this.loanData.propertyValue,
         annualRate: this.loanData.annualRate,
         years: this.loanData.years,
         state: this.loanData.stateCode,
-        includeSalesTax: this.loanData.includeSalesTax
+        includeSalesTax: this.loanData.includeSalesTax,
+        pmiRate: this.loanData.pmiRate,
+        monthlyInsurance: this.loanData.monthlyInsurance
       });
 
       // Validate sanitized data
       if (sanitizedData.principal === null || sanitizedData.principal <= 0) {
         this.isCalculating = false;
         this.setError('Please enter a valid loan amount');
+        return;
+      }
+
+      if (sanitizedData.propertyValue === null || sanitizedData.propertyValue <= 0) {
+        this.isCalculating = false;
+        this.setError('Please enter a valid property value');
+        return;
+      }
+
+      if (sanitizedData.principal > sanitizedData.propertyValue) {
+        this.isCalculating = false;
+        this.setError('Loan amount cannot exceed property value');
         return;
       }
 
@@ -329,13 +438,24 @@ export default {
         return;
       }
 
+      // Validate PMI rate if needed
+      const ltv = sanitizedData.principal / sanitizedData.propertyValue;
+      if (ltv > 0.80 && (sanitizedData.pmiRate < 0 || sanitizedData.pmiRate > 5)) {
+        this.isCalculating = false;
+        this.setError('PMI rate must be between 0% and 5%');
+        return;
+      }
+
       // Create snapshot with sanitized data
       const loanDataSnapshot = {
         principal: sanitizedData.principal,
+        propertyValue: sanitizedData.propertyValue,
         annualRate: sanitizedData.annualRate,
         years: sanitizedData.years,
         stateCode: sanitizedData.state,
-        includeSalesTax: sanitizedData.includeSalesTax
+        includeSalesTax: sanitizedData.includeSalesTax,
+        pmiRate: sanitizedData.pmiRate,
+        monthlyInsurance: sanitizedData.monthlyInsurance
       };
 
       this.calculateTimeout = setTimeout(() => {
@@ -346,12 +466,16 @@ export default {
     handleReset() {
       this.loanData = {
         principal: null,
+        propertyValue: null,
         annualRate: null,
         years: 30,
         stateCode: '',
-        includeSalesTax: false
+        includeSalesTax: false,
+        pmiRate: 0.8,
+        monthlyInsurance: 0
       };
       this.formattedPrincipal = '';
+      this.formattedPropertyValue = '';
       this.errorMessage = '';
       this.$emit('reset');
     },
@@ -517,8 +641,19 @@ form {
   font-size: 1rem;
 }
 
+.unit-symbol {
+  position: absolute;
+  right: 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #9ca3af;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
 .currency-symbol.symbol-active,
-.percent-symbol.symbol-active {
+.percent-symbol.symbol-active,
+.unit-symbol.symbol-active {
   color: #6366f1;
   transform: scale(1.1);
 }
@@ -562,129 +697,6 @@ form {
     opacity: 1;
     transform: scale(1) rotate(0deg);
   }
-}
-
-/* ===== RANGE SLIDER ===== */
-.slider-group {
-  padding-top: 8px;
-}
-
-.slider-wrapper {
-  position: relative;
-  padding: 20px 0;
-  margin-top: 8px;
-}
-
-.range-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  border-radius: 8px;
-  background: rgba(209, 213, 219, 0.3);
-  outline: none;
-  position: relative;
-  z-index: 2;
-  cursor: pointer;
-}
-
-.range-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4),
-              0 0 0 4px rgba(255, 255, 255, 1),
-              0 0 0 6px rgba(99, 102, 241, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.range-slider::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4),
-              0 0 0 4px rgba(255, 255, 255, 1),
-              0 0 0 6px rgba(99, 102, 241, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.range-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5),
-              0 0 0 4px rgba(255, 255, 255, 1),
-              0 0 0 8px rgba(99, 102, 241, 0.3);
-}
-
-.range-slider::-moz-range-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5),
-              0 0 0 4px rgba(255, 255, 255, 1),
-              0 0 0 8px rgba(99, 102, 241, 0.3);
-}
-
-.slider-track-fill {
-  position: absolute;
-  top: 20px;
-  left: 0;
-  height: 8px;
-  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 8px;
-  pointer-events: none;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-}
-
-.slider-tooltip {
-  position: absolute;
-  top: -35px;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: white;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  pointer-events: none;
-}
-
-.slider-tooltip::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%) rotate(45deg);
-  width: 8px;
-  height: 8px;
-  background: #8b5cf6;
-}
-
-.tooltip-enter-active,
-.tooltip-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.tooltip-enter-from,
-.tooltip-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(5px);
-}
-
-.slider-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  font-weight: 600;
 }
 
 /* ===== CHECKBOX GLASSMORPHISM ===== */

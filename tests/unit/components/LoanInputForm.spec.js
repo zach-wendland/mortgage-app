@@ -15,6 +15,7 @@ describe('LoanInputForm', () => {
     const wrapper = mount(LoanInputForm);
 
     await wrapper.find('#principal').setValue('200000');
+    await wrapper.find('#propertyValue').setValue('250000');
     await wrapper.find('#rate').setValue('5');
     await wrapper.find('#years').setValue('30');
     await wrapper.find('#state').setValue('WA');
@@ -28,10 +29,13 @@ describe('LoanInputForm', () => {
     const payload = wrapper.emitted('calculate')?.[0]?.[0];
     expect(payload).toMatchObject({
       principal: 200000,
+      propertyValue: 250000,
       annualRate: 5,
       years: 30,
       stateCode: 'WA',
-      includeSalesTax: true
+      includeSalesTax: true,
+      pmiRate: 0.8,
+      monthlyInsurance: 0
     });
   });
 

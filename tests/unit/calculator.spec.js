@@ -4,7 +4,11 @@ import {
   calculateTotalPaid,
   calculateTotalInterest,
   generateAmortizationSchedule,
-  validateInputs
+  validateInputs,
+  calculateLTV,
+  calculateMonthlyPMI,
+  calculatePMIDropOff,
+  calculateTotalPMI
 } from '../../src/utils/calculator.js';
 
 describe('calculateMonthlyPayment', () => {
@@ -91,5 +95,96 @@ describe('validateInputs', () => {
     expect(validateInputs(200000000, 5, 30).isValid).toBe(false);
     expect(validateInputs(200000, 150, 30).isValid).toBe(false);
     expect(validateInputs(200000, 5, 60).isValid).toBe(false);
+  });
+});
+
+describe('calculateLTV', () => {
+  it('calculates LTV correctly', () => {
+    expect(calculateLTV(400000, 500000)).toBeCloseTo(0.80, 2);
+    expect(calculateLTV(450000, 500000)).toBeCloseTo(0.90, 2);
+    expect(calculateLTV(250000, 500000)).toBeCloseTo(0.50, 2);
+  });
+
+  it('returns 0 for zero or negative property value', () => {
+    expect(calculateLTV(400000, 0)).toBe(0);
+    expect(calculateLTV(400000, -100)).toBe(0);
+  });
+
+  it('handles edge cases', () => {
+    expect(calculateLTV(0, 500000)).toBe(0);
+    expect(calculateLTV(500000, 500000)).toBe(1);
+  });
+});
+
+describe('calculateMonthlyPMI', () => {
+  it('calculates monthly PMI correctly', () => {
+    const monthlyPMI = calculateMonthlyPMI(400000, 0.008);
+    expect(monthlyPMI).toBeCloseTo(266.67, 2);
+  });
+
+  it('calculates PMI for different rates', () => {
+    expect(calculateMonthlyPMI(300000, 0.005)).toBeCloseTo(125, 2);
+    expect(calculateMonthlyPMI(500000, 0.01)).toBeCloseTo(416.67, 2);
+  });
+
+  it('returns 0 for zero or negative PMI rate', () => {
+    expect(calculateMonthlyPMI(400000, 0)).toBe(0);
+    expect(calculateMonthlyPMI(400000, -0.01)).toBe(0);
+  });
+});
+
+describe('calculatePMIDropOff', () => {
+  it('finds PMI drop-off point when LTV reaches 78%', () => {
+    const monthlyPayment = calculateMonthlyPayment(400000, 6, 30);
+    const schedule = generateAmortizationSchedule(400000, 6, 30, monthlyPayment);
+    const dropOff = calculatePMIDropOff(schedule, 500000);
+
+    expect(dropOff).toBeGreaterThan(0);
+    expect(dropOff).toBeLessThan(schedule.length);
+
+    // Verify the balance at drop-off is at or below 78% of property value
+    const dropOffPayment = schedule[dropOff - 1];
+    expect(dropOffPayment.remainingBalance).toBeLessThanOrEqual(500000 * 0.78);
+  });
+
+  it('returns null for zero or negative property value', () => {
+    const monthlyPayment = calculateMonthlyPayment(400000, 6, 30);
+    const schedule = generateAmortizationSchedule(400000, 6, 30, monthlyPayment);
+
+    expect(calculatePMIDropOff(schedule, 0)).toBeNull();
+    expect(calculatePMIDropOff(schedule, -100)).toBeNull();
+  });
+
+  it('handles edge case where PMI never drops off', () => {
+    const monthlyPayment = calculateMonthlyPayment(950000, 6, 30);
+    const schedule = generateAmortizationSchedule(950000, 6, 30, monthlyPayment);
+    // Property value is $1M, loan is $950k (95% LTV), should never reach 78%
+    const dropOff = calculatePMIDropOff(schedule, 1000000);
+
+    expect(dropOff).toBeGreaterThan(0);
+  });
+});
+
+describe('calculateTotalPMI', () => {
+  it('calculates total PMI paid until drop-off', () => {
+    const monthlyPMI = 266.67;
+    const dropOffMonth = 120;
+    const totalPMI = calculateTotalPMI(monthlyPMI, dropOffMonth);
+
+    expect(totalPMI).toBeCloseTo(32000.4, 2);
+  });
+
+  it('returns 0 when no drop-off month', () => {
+    expect(calculateTotalPMI(266.67, null)).toBe(0);
+  });
+
+  it('returns 0 when monthly PMI is zero or negative', () => {
+    expect(calculateTotalPMI(0, 120)).toBe(0);
+    expect(calculateTotalPMI(-10, 120)).toBe(0);
+  });
+
+  it('handles different scenarios', () => {
+    expect(calculateTotalPMI(200, 60)).toBe(12000);
+    expect(calculateTotalPMI(150.50, 24)).toBeCloseTo(3612, 2);
   });
 });

@@ -100,6 +100,11 @@ export function sanitizeLoanForm(formData) {
       max: 100000000, // $100M max
       allowDecimals: true
     }),
+    propertyValue: sanitizeNumber(formData.propertyValue, {
+      min: 0,
+      max: 100000000, // $100M max
+      allowDecimals: true
+    }),
     annualRate: sanitizeNumber(formData.annualRate, {
       min: 0,
       max: 100, // 100% max rate
@@ -109,6 +114,16 @@ export function sanitizeLoanForm(formData) {
       min: 1,
       max: 50, // 50 years max
       allowDecimals: false
+    }),
+    pmiRate: sanitizeNumber(formData.pmiRate, {
+      min: 0,
+      max: 5, // 5% max PMI rate
+      allowDecimals: true
+    }),
+    monthlyInsurance: sanitizeNumber(formData.monthlyInsurance, {
+      min: 0,
+      max: 10000, // $10k max monthly insurance
+      allowDecimals: true
     }),
     state: formData.state ? sanitizeStateCode(formData.state) : '',
     includeSalesTax: sanitizeBoolean(formData.includeSalesTax)

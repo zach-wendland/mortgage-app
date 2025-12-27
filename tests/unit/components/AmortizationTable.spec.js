@@ -19,11 +19,34 @@ const sampleSchedule = [
   }
 ];
 
+const sampleLoanInfo = {
+  principal: 100000,
+  propertyValue: 125000,
+  downPayment: 25000,
+  ltv: 0.80,
+  pmiRequired: false,
+  annualRate: 5,
+  years: 10
+};
+
+const sampleResults = {
+  monthlyPayment: 1000,
+  monthlyPMI: 0,
+  monthlyInsurance: 0,
+  totalMonthlyPayment: 1000,
+  pmiDropOffMonth: null,
+  totalPMIPaid: 0,
+  totalPaid: 12000,
+  totalInterest: 2000
+};
+
 describe('AmortizationTable', () => {
   it('renders rows for each payment in the schedule', () => {
     const wrapper = mount(AmortizationTable, {
       props: {
-        schedule: sampleSchedule
+        schedule: sampleSchedule,
+        loanInfo: sampleLoanInfo,
+        results: sampleResults
       }
     });
 
@@ -37,7 +60,9 @@ describe('AmortizationTable', () => {
   it('displays summary info with payment count', () => {
     const wrapper = mount(AmortizationTable, {
       props: {
-        schedule: sampleSchedule
+        schedule: sampleSchedule,
+        loanInfo: sampleLoanInfo,
+        results: sampleResults
       }
     });
 

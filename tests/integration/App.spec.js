@@ -38,6 +38,7 @@ describe('App integration', () => {
     const wrapper = mount(App);
 
     await wrapper.find('#principal').setValue('200000');
+    await wrapper.find('#propertyValue').setValue('250000');
     await wrapper.find('#rate').setValue('5');
     await wrapper.find('#years').setValue('30');
     await wrapper.find('#state').setValue('WA');

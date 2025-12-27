@@ -72,7 +72,7 @@
           <LoanSummary :loan-info="loanInfo" :results="results" />
         </div>
         <div class="glass-card table-panel stagger-item" style="--stagger: 1">
-          <AmortizationTable :schedule="schedule" />
+          <AmortizationTable :schedule="schedule" :loan-info="loanInfo" :results="results" />
         </div>
       </section>
 

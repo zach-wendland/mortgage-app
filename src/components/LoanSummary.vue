@@ -61,58 +61,146 @@ export default {
         ? ((this.loanInfo.principal / this.results.totalPaid) * 100).toFixed(1)
         : '0';
 
-      return [
-        {
-          label: 'Monthly Payment',
+      const cards = [];
+
+      // Total Monthly Payment (P&I + PMI + Insurance) - ALWAYS show first
+      const hasPMIorInsurance = (this.results?.monthlyPMI ?? 0) > 0 || (this.results?.monthlyInsurance ?? 0) > 0;
+      cards.push({
+        label: hasPMIorInsurance ? 'Total Monthly Payment' : 'Monthly Payment',
+        prefix: '$',
+        rawValue: this.results?.totalMonthlyPayment ?? this.results?.monthlyPayment ?? 0,
+        isNumber: true,
+        decimals: 2,
+        highlight: true,
+        glass: true
+      });
+
+      // P&I Breakdown (if PMI or insurance exists)
+      if (hasPMIorInsurance) {
+        cards.push({
+          label: 'Principal & Interest',
           prefix: '$',
           rawValue: this.results?.monthlyPayment ?? 0,
           isNumber: true,
-          decimals: 2,
-          highlight: true,
-          glass: true
-        },
-        {
-          label: 'Total Interest',
+          decimals: 2
+        });
+      }
+
+      // Monthly PMI (if applicable)
+      if ((this.results?.monthlyPMI ?? 0) > 0) {
+        const pmiDropOff = this.results?.pmiDropOffMonth;
+        cards.push({
+          label: 'Monthly PMI',
           prefix: '$',
-          rawValue: this.results?.totalInterest ?? 0,
+          rawValue: this.results.monthlyPMI,
           isNumber: true,
           decimals: 2,
-          showChart: true,
-          chartColor: '#f59e0b',
-          chartLabel: 'Interest',
-          percentage: parseFloat(interestPercentage)
-        },
-        {
-          label: 'Total Paid',
+          displayValue: pmiDropOff
+            ? `$${this.results.monthlyPMI.toFixed(2)} (ends payment #${pmiDropOff})`
+            : undefined
+        });
+      }
+
+      // Homeowner's Insurance (if applicable)
+      if ((this.results?.monthlyInsurance ?? 0) > 0) {
+        cards.push({
+          label: "Homeowner's Insurance",
           prefix: '$',
-          rawValue: this.results?.totalPaid ?? 0,
+          rawValue: this.results.monthlyInsurance,
           isNumber: true,
           decimals: 2
-        },
-        {
-          label: 'Loan Amount',
-          prefix: '$',
-          rawValue: this.loanInfo?.financedPrincipal ?? this.loanInfo?.principal ?? 0,
-          isNumber: true,
-          decimals: 2,
-          showChart: this.loanInfo?.taxAmount > 0,
-          chartColor: '#10b981',
-          chartLabel: 'Principal',
-          percentage: parseFloat(principalPercentage)
-        },
-        {
-          label: 'Interest Rate',
-          rawValue: this.loanInfo?.annualRate ?? 0,
+        });
+      }
+
+      // Loan-to-Value (if available)
+      if (this.loanInfo?.ltv != null) {
+        cards.push({
+          label: 'Loan-to-Value (LTV)',
+          rawValue: this.loanInfo.ltv * 100,
           suffix: '%',
           isNumber: true,
-          decimals: 3
-        },
-        {
-          label: 'Loan Term',
-          displayValue: `${this.loanInfo?.years ?? 0} years`,
-          isNumber: false
-        }
-      ];
+          decimals: 1,
+          showChart: true,
+          chartColor: this.loanInfo.ltv > 0.80 ? '#f59e0b' : '#10b981',
+          chartLabel: 'LTV',
+          percentage: this.loanInfo.ltv * 100
+        });
+      }
+
+      // Down Payment (if available)
+      if (this.loanInfo?.downPayment != null && this.loanInfo.downPayment > 0) {
+        cards.push({
+          label: 'Down Payment',
+          prefix: '$',
+          rawValue: this.loanInfo.downPayment,
+          isNumber: true,
+          decimals: 2
+        });
+      }
+
+      // Total Interest
+      cards.push({
+        label: 'Total Interest',
+        prefix: '$',
+        rawValue: this.results?.totalInterest ?? 0,
+        isNumber: true,
+        decimals: 2,
+        showChart: true,
+        chartColor: '#f59e0b',
+        chartLabel: 'Interest',
+        percentage: parseFloat(interestPercentage)
+      });
+
+      // Total PMI Paid (if applicable)
+      if ((this.results?.totalPMIPaid ?? 0) > 0) {
+        cards.push({
+          label: 'Total PMI Paid',
+          prefix: '$',
+          rawValue: this.results.totalPMIPaid,
+          isNumber: true,
+          decimals: 2
+        });
+      }
+
+      // Total Paid
+      cards.push({
+        label: 'Total Paid',
+        prefix: '$',
+        rawValue: this.results?.totalPaid ?? 0,
+        isNumber: true,
+        decimals: 2
+      });
+
+      // Loan Amount
+      cards.push({
+        label: 'Loan Amount',
+        prefix: '$',
+        rawValue: this.loanInfo?.financedPrincipal ?? this.loanInfo?.principal ?? 0,
+        isNumber: true,
+        decimals: 2,
+        showChart: this.loanInfo?.taxAmount > 0,
+        chartColor: '#10b981',
+        chartLabel: 'Principal',
+        percentage: parseFloat(principalPercentage)
+      });
+
+      // Interest Rate
+      cards.push({
+        label: 'Interest Rate',
+        rawValue: this.loanInfo?.annualRate ?? 0,
+        suffix: '%',
+        isNumber: true,
+        decimals: 3
+      });
+
+      // Loan Term
+      cards.push({
+        label: 'Loan Term',
+        displayValue: `${this.loanInfo?.years ?? 0} years`,
+        isNumber: false
+      });
+
+      return cards;
     }
   },
   methods: {
